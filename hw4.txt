@@ -1,0 +1,258 @@
+ЗАДАНИЕ 1.
+====================================================================
+настроить привилегии для sudo позволяет файл /etc/sudoers
+редактировать этот файл можно командой sudo visudo
+в этом файле уже видим запись для группы sudo
+которая говорит что пользователям группы sudo с любого хоста 
+можно выполнять любые команды 
+от имени любого пользователя (root в том числе) любой группы
+
+%sudo   ALL=(ALL:ALL) ALL
+
+можно было бы оставить такую только запись
+%sudo   ALL=(root) ALL
+
+создадим пользователя и добавим ему группу sudo 
+sudo useradd -m -G sudo -s /bin/bash pupkin -p $(openssl passwd 'pupkin12')
+
+опция -m создаст ему папку /home/pupkin, -s шелл по умолчанию, и назначим пароль 
+
+смотрим что получилось 
+whoami
+id
+и удаляем все
+exit
+sudo userdel -fr pupkin
+====================================================================
+
+
+
+ЗАДАНИЕ 2.
+====================================================================
+создаю группу
+sudo groupadd developer
+cat /etc/group | grep developer
+
+создаю папку для совместой работы
+sudo mkdir /tmp/work
+ls -la /tmp | grep work
+
+установлю папке эту группу 
+sudo chown alexp:developer /tmp/work
+ls -la /tmp | grep work
+
+установлю права папке с SetGID
+sudo chmod 2775 /tmp/work
+
+создаю трех пользователей с добавочной группой developer
+sudo useradd -m -G developer -s /bin/bash user1 -p $(openssl passwd 'user1')
+sudo useradd -m -G developer -s /bin/bash user2 -p $(openssl passwd 'user2')
+sudo useradd -m -G developer -s /bin/bash user3 -p $(openssl passwd 'user3')
+
+
+проверяю и вижу что все работает как задумывалось
+-----------------------------------------------------
+su - user1
+echo "i am user1" > /tmp/work/user1.txt - создаю свой файл
+exit
+
+su - user2
+echo "i am user2" > /tmp/work/user2.txt - создаю свой файл
+ls -la /tmp/work
+nano /tmp/work/user1.txt - редактирую файл первого пользователя
+cat /tmp/work/user1.txt - вижу внесенные изменения
+exit
+
+su - user1
+cat /tmp/work/user1.txt - вижу те же изменения
+rm /tmp/work/user2.txt - удаляю файл второго пользователя
+ls -la /tmp/work - вижу файл удален
+exit
+--------------------------------------------------
+
+
+Создать поддиректорию для обмена файлами, 
+но чтобы удалять файлы могли только их создатели.
+------------------------------------------------------
+sudo mkdir /tmp/work/buffer
+ls -la /tmp/work
+
+
+установлю права этой поддиректории со Sticky-бит
+sudo chmod 1775 /tmp/work/buffer
+ls -la /tmp/work
+
+
+проверяю и вижу что все работает как задумывалось
+------------------------------------------------------
+su - user1
+echo "i am user1" > /tmp/work/buffer/user1.txt - создаю свой файл в этой поддиректории
+ls -la /tmp/work/buffer
+exit
+
+
+su - user2
+echo "i am user2" > /tmp/work/buffer/user2.txt - создаю свой файл в этой поддиректории
+ls -la /tmp/work/buffer
+
+ПОПЫТКА удалить файл первого пользователя в поддиректории
+rm /tmp/work/buffer/user1.txt
+Ответ: rm: cannot remove '/tmp/work/buffer/user1.txt': Operation not permitted
+
+Попытка отредактировать файл первого пользователя в поддиректории
+nano /tmp/work/buffer/user1.txt - редактирую
+сохраняю  
+cat /tmp/work/buffer/user1.txt - вижу изменения
+то есть user2 пишет в файл user1, но удалить не может
+
+exit
+------------------------------------------------------
+
+====================================================================
+
+
+
+ЗАДАНИЕ 3.
+====================================================================
+
+#!/bin/bash
+grep '^web:' /etc/group > /dev/null
+if [[ $? == 0 ]] ; then
+    echo "Группа web существует:"
+    grep '^web:' /etc/group
+    echo "GID группы равен:"
+    grep '^web:' /etc/group | cut -d ':' -f 3
+    echo "Пользователи группы web:"
+    grep '^web:' /etc/group | cut -d ':' -f 4
+
+else
+    echo "Создаю группу web:"
+    sudo groupadd web
+    grep '^web:' /etc/group
+    echo "Создаю пользователей с группой web:"
+    sudo useradd -m webuser1 -p $(openssl passwd 'webuser1')
+    sudo useradd -m webuser2 -p $(openssl passwd 'webuser2')
+    sudo useradd -m webuser3 -p $(openssl passwd 'webuser3')
+    sudo usermod -aG web webuser1
+    sudo usermod -aG web webuser2
+    sudo usermod -aG web webuser3
+    grep '^web:' /etc/group
+fi
+
+
+
+grep '^geekbrains:' /etc/group > /dev/null
+if [[ $? == 0 ]] ; then
+    echo "Группа geekbrains существует:"
+    grep '^geekbrains:' /etc/group
+    echo "GID группы равен:"
+    grep '^geekbrains:' /etc/group | cut -d ':' -f 3
+    echo "Пользователи группы geekbrains:"
+    grep '^geekbrains:' /etc/group | cut -d ':' -f 4
+
+else
+    echo "Создаю группу geekbrains:"
+    sudo groupadd geekbrains
+    grep '^geekbrains:' /etc/group
+    echo "Создаю пользователей с группой geekbrains:"
+    sudo useradd -m gbuser1 -p $(openssl passwd 'gbuser1')
+    sudo useradd -m gbuser2 -p $(openssl passwd 'gbuser2')
+    sudo useradd -m gbuser3 -p $(openssl passwd 'gbuser3')
+    sudo usermod -aG geekbrains gbuser1
+    sudo usermod -aG geekbrains gbuser2
+    sudo usermod -aG geekbrains gbuser3
+    grep '^geekbrains:' /etc/group
+fi
+
+
+
+# при создании пользователей можно было бы сразу назначить им группу, 
+# но в таком случае они почему-то не отображаются в файле /etc/group
+
+
+
+grep '^rockstar:' /etc/passwd > /dev/null
+if [[ $? == 0 ]] ; then
+    echo "Пользователь rockstar существует."    
+    
+    USERUID=$(grep '^rockstar:' /etc/passwd  | cut -d ':' -f 3)
+    if [ "$USERUID" != "143" ] ; then
+       echo "UID пользователя не равен 143, меняю на 143."
+       sudo usermod -u 143 rockstar
+    fi
+
+    USERGID=$(grep '^rockstar:' /etc/passwd  | cut -d ':' -f 4)
+    GROUPGID=$(grep '^web:' /etc/group | cut -d ':' -f 3)
+    if [ "$USERGID" != "$GROUPGID" ] ; then
+       echo "Основная группа не web, меняю на web."
+       sudo usermod -g web rockstar
+    fi
+    
+    INGROUP=$(grep '^geekbrains:' /etc/group | cut -d ':' -f 4 | grep '\brockstar\b' | wc -l)    
+    if [ "$INGROUP" -eq 0 ] ; then
+       echo "Группы geekbrains нет у пользователя, добавляю."
+       sudo usermod -aG geekbrains rockstar
+    fi
+
+
+
+    echo "UID пользователя rockstar:"
+    grep '^rockstar:' /etc/passwd  | cut -d ':' -f 3
+
+    echo "GID пользователя rockstar:"
+    grep '^rockstar:' /etc/passwd  | cut -d ':' -f 4
+
+    echo "Все группы в которых есть пользователь rockstar:"
+    grep '\brockstar\b' /etc/group | cut -d ':' -f 1
+   
+    echo "Почему-то в файле /etc/group у основной группы web"
+    echo "пользователь rockstar не отображается,"
+    echo "хотя в его шелле по команде id, группа web фигурирует как основная" 
+
+else
+    echo "Создаю пользователя rockstar:"
+    sudo useradd -u 143 -m -s /bin/bash rockstar -p $(openssl passwd 'rock123')
+    
+    echo "Добавлю пользователю rockstar основную группу web"
+    sudo usermod -g web rockstar
+
+    echo "Добавлю пользователю rockstar дополнительную группу geekbrains"
+    sudo usermod -aG geekbrains rockstar
+
+    echo "Кажется только в таком порядке изменения групп пользователя появятся нужные записи в /etc/group:" 
+    grep '\brockstar\b' /etc/group
+
+
+    echo "UID пользователя rockstar:"
+    grep '^rockstar:' /etc/passwd  | cut -d ':' -f 3
+
+    echo "GID пользователя rockstar:"
+    grep '^rockstar:' /etc/passwd  | cut -d ':' -f 4
+
+    echo "Все группы в которых есть пользователь rockstar:"
+    grep '\brockstar\b' /etc/group | cut -d ':' -f 1
+   
+    echo "Почему-то в файле /etc/group у основной группы web"
+    echo "пользователь rockstar не отображается,"
+    echo "хотя в его шелле по команде id, группа web фигурирует как основная" 
+fi
+====================================================================
+
+
+
+cd linux_test/
+git checkout -b hw4_branch
+git branch
+git checkout hw4_branch
+git push
+git push --set-upstream origin hw4_branch
+
+
+сохраняю в папке репо этот файл hw4.txt (через буфер)
+git status
+git add hw4.txt 
+
+
+
+git commit -m 'homework4 done'
+git push 
