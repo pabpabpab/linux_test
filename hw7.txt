@@ -84,7 +84,7 @@ to prevent Google Chrome from showing the site as insecure;
 
 #create a self-signed key and certificate pair with OpenSSL
 sudo mkdir /etc/nginx/ssl/
-sudo nano /etc/nginx/ssl/localhost.conf
+sudo nano /etc/nginx/ssl/alexp-VirtualBox.conf
 
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/alexp-VirtualBox.key -out /etc/nginx/ssl/alexp-VirtualBox.crt -config /etc/nginx/ssl/alexp-VirtualBox.conf
 
