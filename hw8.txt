@@ -1,0 +1,58 @@
+mkdir hw8
+cd hw8
+git clone git@github.com:mtuktarov/linux_goodies.git
+cp -R linux_goodies/docker/django-test-app django/
+cd hw8/django
+
+
+#to download image but not start container yet
+docker pull python:alpine 
+
+
+
+#creating file Dockerfile for building docker-image, that will start container with this app
+===========================================================
+
+nano Dockerfile
+#----------------------------------------------------------
+#--initial image over that we will add other things in order to start our app
+FROM python:alpine 
+
+#--copy requirements.txt into image
+COPY requirements.txt /tmp/requirements.txt 
+
+#--in order to install dependencies
+RUN pip install -Ur /tmp/requirements.txt 
+
+RUN rm -rf /tmp/requirements.txt 
+
+COPY db.sqlite3 /opt/db.sqlite3
+COPY demo /opt/demo
+COPY polls /opt/polls
+COPY manage.py /opt/manage.py
+
+RUN python /opt/manage.py migrate
+
+#--this command starts with image starting
+CMD ["python", "/opt/manage.py", "runserver", "0.0.0.0:8000"]     
+#----------------------------------------------------------
+
+
+#image building (. path to dockerfile) (-t myapp:latest - image name)
+docker build . -t hw3:latest    
+docker images
+
+#run
+docker run -ti -p 8000:8000 hw3:latest 
+
+ip a (in Ubuntu)
+http://192.168.43.23:8000
+
+
+task 4
+======================================================
+docker tag hw3:latest 54abd280dc0a/hw3
+docker login --username=54abd280dc0a --password=mypassword
+docker push 54abd280dc0a/hw3
+https://hub.docker.com/r/54abd280dc0a/hw3
+
