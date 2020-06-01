@@ -1,0 +1,126 @@
+1.1. to open port 80
+==========================================================
+sudo apt-get install nginx
+sudo systemctl restart nginx
+
+# By default port 80 is opened in the configuration file /etc/nginx/sites-enabled/default
+
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+}
+
+sudo apt install net-tools
+netstat -tlnp
+
+
+# But you can open this port with this command if the port is closed by iptables.
+sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+
+
+
+
+1.1. to open port 443
+==========================================================
+# To open port 443, expand the Nginx config by adding port 443 (listen) and restart Nginx.
+
+sudo nano /etc/nginx/sites-enabled/default
+
+server {
+  listen 443 ssl default_server;
+  listen [::]:443 ssl default_server;
+}
+
+sudo nginx -t
+systemctl restart nginx
+netstat -tlnp
+
+
+
+
+1.2. custom Nginx config
+==========================================================
+sudo apt-get install nginx
+sudo systemctl restart nginx
+
+
+sudo nano /etc/nginx/conf.d/site.conf
+------------------------------------------
+server{
+  listen 80;
+  server_name alexp-VirtualBox; 
+
+  location / { 
+    return  200 "HTTP HOST"; 
+    if ($http_user != ''){
+      return  200 "Hi $http_user";
+    }
+    return 404 "Page not found";
+  }
+}
+------------------------------------------
+sudo nginx -t
+systemctl restart nginx
+
+curl -L http://alexp-VirtualBox -H "user: Vova"
+#Hi Vova
+curl -L http://alexp-VirtualBox
+#Page not found
+
+
+
+2.1. how to create a self-signed SSL certificate for Nginx
+==========================================================
+Self-signed ssl certificates are when the owner and publisher of the certificate are the same person.
+
+- Generate a self-signed certificate using OpenSSL;
+- Copy the certificate to the certificates folder on Ubuntu;
+- Update the Nginx configuration file to load the certificate;
+- Copy the certificate's public key to the CA trusted root database 
+to prevent Google Chrome from showing the site as insecure;
+
+
+
+
+#create a self-signed key and certificate pair with OpenSSL
+sudo mkdir /etc/nginx/ssl/
+sudo nano /etc/nginx/ssl/alexp-VirtualBox.conf
+
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/alexp-VirtualBox.key -out /etc/nginx/ssl/alexp-VirtualBox.crt -config /etc/nginx/ssl/alexp-VirtualBox.conf
+
+#putting this snippet in /etc/nginx/conf.d/site.conf
+sudo nano /etc/nginx/conf.d/site.conf
+----------------------------------------------------
+server{
+  listen 443 ssl;
+  server_name alexp-VirtualBox;
+  ssl_certificate /etc/nginx/ssl/alexp-VirtualBox.crt; #public key
+  ssl_certificate_key /etc/nginx/ssl/alexp-VirtualBox.key; #private key
+
+  location / { 
+    return  200 "HTTP HOST"; 
+  }
+}
+
+server{
+  listen 80;
+  server_name alexp-VirtualBox; 
+  return 301 https://alexp-VirtualBox$request_uri;
+}
+----------------------------------------------------
+sudo nginx -t
+systemctl restart nginx
+
+https://alexp-VirtualBox - does not work
+
+
+
+sudo apt install libnss3-tools
+certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n "alexp-VirtualBox" -i /etc/nginx/ssl/alexp-VirtualBox.crt
+
+
+
+2.4. 
+==========================================================
+Symmetric encryption is faster than asymmetric encryption, 
+and this makes a difference when transferring large amounts of data.
